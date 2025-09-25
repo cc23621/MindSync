@@ -1,82 +1,38 @@
-require("dotenv").config();
-const http = require("http");
-const { neon } = require("@neondatabase/serverless");
+// Carrega variáveis de ambiente antes de qualquer coisa
+require('dotenv').config();
 
-const sql = neon(process.env.DATABASE_URL);
+const express = require('express');
+const cors = require('cors');
 
-// Função que retorna os dados da tabela (para uso interno ou importação)
-async function getTableData(table) {
-  // Segurança: só permitir tabelas conhecidas
-  const allowedTables = [
-    "users",
-    "psychologists",
-    "psychologist_patients",
-    "humor_registros",
-    "emocoes",
-    "graficos",
-    "diary_entries",
-    "OTP",
-    "User"
-  ];
+// Importa rotas
+const authRoutes = require('./src/routes/authRoutes');
+const diaryRoutes = require('./src/routes/diaryRoutes');
+const emotionRoutes = require('./src/routes/emotionRoutes');
+const psychologistRoutes = require('./src/routes/psychologistRoutes');
 
-  if (!allowedTables.includes(table)) {
-    throw new Error("Tabela não permitida");
-  }
+// Importa conexão com o banco
+const pool = require('./src/models/db');
 
-  // Cada tabela tem sua própria query segura
-  switch (table) {
-    case "users":
-      return await sql`SELECT * FROM users`;
-    case "psychologists":
-      return await sql`SELECT * FROM psychologists`;
-    case "psychologist_patients":
-      return await sql`SELECT * FROM psychologist_patients`;
-    case "humor_registros":
-      return await sql`SELECT * FROM humor_registros`;
-    case "emocoes":
-      return await sql`SELECT * FROM emocoes`;
-    case "graficos":
-      return await sql`SELECT * FROM graficos`;
-    case "diary_entries":
-      return await sql`SELECT * FROM diary_entries`;
-    case "OTP":
-      return await sql`SELECT * FROM OTP`;
-    case "User":
-      return await sql`SELECT * FROM User`;
-  }
-}
+// Swagger
+const { swaggerUi, swaggerSpec } = require('./src/swagger');
 
-// Server HTTP
-const requestHandler = async (req, res) => {
-  try {
-    if (req.url.startsWith("/api/")) {
-      const table = req.url.replace("/api/", "").trim();
+const app = express();
 
-      if (!table) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Nome da tabela não informado" }));
-        return;
-      }
+const contentRoutes = require('./src/routes/contentRoutes');
+// Middlewares
+app.use(cors());
+app.use(express.json());
 
-      const result = await getTableData(table);
-
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(result, null, 2));
-    } else {
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end("API rodando 🚀 | use /api/{tabela} para consultar");
-    }
-  } catch (err) {
-    console.error("Erro ao buscar dados:", err);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: err.message || "Erro ao buscar dados" }));
-  }
-};
-
-// Start server
-http.createServer(requestHandler).listen(3000, () => {
-  console.log("Server running at http://localhost:3000");
+// Rotas
+app.use('/auth', authRoutes);
+app.use('/diary', diaryRoutes);
+app.use('/emotion', emotionRoutes);
+app.use('/psychologists', psychologistRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/users', authRoutes);
+app.use('/contents', contentRoutes);
+// Porta
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
-
-// Exportar a função para uso em outros módulos
-module.exports = { getTableData };

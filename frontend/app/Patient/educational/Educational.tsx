@@ -1,17 +1,52 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, } from "react-native";
+import api from "../../../service/api";
+
+interface Content {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  url: string;
+  created_at?: string;
+}
 
 export default function ProfilePatient() {
   const router = useRouter();
   const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>(""); 
+  const [contents, setContents] = useState<Content[]>([]);
+
+
+  useEffect(() => {
+    const fetchContents = async () => {
+      try {
+        const url = selectedType
+          ? `/contents/filter?type=${selectedType}`
+          : "/contents";
+        const response = await api.get(url);
+        setContents(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar conteúdos:", error);
+      }
+    };
+    fetchContents();
+  }, [selectedType]);
+
+  const handleSelectFilter = (type: string) => {
+    setSelectedType(type);
+    setFilterOpen(false);
+  };
 
   return (
     <View style={styles.container}>
-    
+
       <View style={styles.header}>
-    
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.iconButton}
+        >
           <Image
             source={require("../../../assets/icons/back.png")}
             style={styles.icon}
@@ -40,6 +75,7 @@ export default function ProfilePatient() {
         </TouchableOpacity>
       </View>
 
+
       <View style={styles.subHeader}>
         <Text style={styles.suggestionText}>Sugestões para você</Text>
 
@@ -48,7 +84,9 @@ export default function ProfilePatient() {
             style={styles.filterBox}
             onPress={() => setFilterOpen(!filterOpen)}
           >
-            <Text style={styles.filterText}>Filtrar</Text>
+            <Text style={styles.filterText}>
+              {selectedType ? selectedType : "Filtrar"}
+            </Text>
             <Image
               source={require("../../../assets/icons/arrowdown.png")}
               style={styles.filterIcon}
@@ -56,16 +94,39 @@ export default function ProfilePatient() {
             />
           </TouchableOpacity>
 
-          {/* Dropdown de filtros */}
+          {/* Dropdown */}
           {filterOpen && (
             <View style={styles.dropdown}>
-              <Text style={styles.dropdownItem}>Artigos</Text>
-              <Text style={styles.dropdownItem}>Vídeos</Text>
-              <Text style={styles.dropdownItem}>Podcast</Text>
+              <TouchableOpacity onPress={() => handleSelectFilter("")}>
+                <Text style={styles.dropdownItem}>Todos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleSelectFilter("article")}>
+                <Text style={styles.dropdownItem}>Artigos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleSelectFilter("video")}>
+                <Text style={styles.dropdownItem}>Vídeos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleSelectFilter("podcast")}>
+                <Text style={styles.dropdownItem}>Podcast</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
       </View>
+
+      <ScrollView style={{ marginTop: 10 }}>
+        {contents.map((content) => (
+          <View key={content.id} style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+              {content.title}
+            </Text>
+            <Text>{content.description}</Text>
+            <TouchableOpacity onPress={() => Linking.openURL(content.url)}>
+              <Text style={{ color: "blue", marginTop: 5 }}>Ver mais</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -117,7 +178,6 @@ const styles = StyleSheet.create({
     color: "#529DFF",
     lineHeight: 20,
   },
-
   subHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -150,7 +210,6 @@ const styles = StyleSheet.create({
     height: 16,
     tintColor: "#A1A1A1",
   },
-
   dropdown: {
     marginTop: 5,
     backgroundColor: "#fff",
