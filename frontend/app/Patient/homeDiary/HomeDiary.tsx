@@ -1,0 +1,226 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import {
+    Animated,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from "react-native";
+
+export default function HomeDiary() {
+  const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  const slideAnim = useRef(new Animated.Value(-250)).current;
+
+  useEffect(() => {
+    const loadUserAndEntries = async () => {
+      const id = await AsyncStorage.getItem("userId");
+      if (id) {
+        setUserId(id);
+        fetchEntries(id);
+      }
+    };
+    loadUserAndEntries();
+  }, []);
+
+  const fetchEntries = async (id: string) => {
+    try {
+      const res = await axios.get(`http://localhost:3000/diary/list/${id}`);
+      setEntries(res.data);
+    } catch (err) {
+      console.error("Erro ao buscar entradas:", err);
+    }
+  };
+
+  const toggleMenu = () => {
+    const novoEstado = !menuVisible;
+    setMenuVisible(novoEstado);
+
+    Animated.timing(slideAnim, {
+      toValue: novoEstado ? 0 : -250,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.clear();
+      router.replace("/onboarding/Onboarding");
+    } catch (err) {
+      console.error("Erro ao fazer logout:", err);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.push("../home/Home")}>
+          <Image
+            source={require("../../../assets/icons/back.png")}
+            style={styles.backIcon}
+          />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Diário emocional</Text>
+
+        <TouchableOpacity onPress={toggleMenu}>
+          <Image
+            source={require("../../../assets/icons/menu.png")}
+            style={styles.menuIcon}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Conteúdo principal */}
+      <ScrollView style={styles.content}>
+        {entries.length === 0 ? (
+          <Text style={{ textAlign: "center", marginTop: 20 }}>
+            Nenhuma entrada ainda
+          </Text>
+        ) : (
+          entries.map((entry) => (
+            <View key={entry.id} style={styles.entryCard}>
+              <Text>{entry.content}</Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      {/* Retângulo azul flutuante inferior */}
+      <View style={styles.floatingBar}>
+        <TouchableOpacity onPress={() => router.push("../newNote/NewNote")}>
+          <Image
+            source={require("../../../assets/icons/more.png")}
+            style={styles.moreIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push("../home/Home")}>
+          <Image
+            source={require("../../../assets/icons/homeImage.png")}
+            style={styles.homeIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => fetchEntries(userId!)}>
+          <Image
+            source={require("../../../assets/icons/menudiario.png")}
+            style={styles.rectIcon}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Menu lateral */}
+      {menuVisible && (
+        <TouchableWithoutFeedback onPress={toggleMenu}>
+          <View style={styles.overlay}>
+            <Animated.View style={[styles.sideMenu, { left: slideAnim }]}>
+              <View>
+                <TouchableOpacity onPress={toggleMenu}>
+                  <Text style={styles.closeButton}>✖</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.menuHeading}>Menu</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("../profile/Profile")}
+                >
+                  <Text style={styles.menuOption}>Seu Perfil</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={handleLogout}>
+                  <Text style={styles.logout}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </TouchableWithoutFeedback>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingTop: 40, backgroundColor: "#fff" },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  backIcon: { width: 30, height: 20 },
+  menuIcon: { width: 28, height: 28 },
+
+  headerTitle: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+
+  content: { flex: 1, padding: 20 },
+
+  entryCard: {
+    backgroundColor: "#f0f0f0",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  sideMenu: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 250,
+    backgroundColor: "#f9f9f9",
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  closeButton: { fontSize: 20, alignSelf: "flex-end", marginBottom: 20 },
+  menuHeading: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
+  menuOption: { fontSize: 18, color: "#000A74", marginTop: 20 },
+  logout: { color: "red", fontWeight: "bold", fontSize: 18, marginTop: 20 },
+
+  floatingBar: {
+    position: "absolute",
+    bottom: 20,
+    left: 80,
+    right: 80,
+    height: 60,
+    backgroundColor: "#000A74",
+    borderRadius: 28,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    elevation: 5,
+  },
+  moreIcon: { width: 18, height: 18, resizeMode: "contain" },
+  homeIcon: { width: 35, height: 35, resizeMode: "contain" },
+  rectIcon: { width: 100, height: 40, resizeMode: "contain" },
+});
