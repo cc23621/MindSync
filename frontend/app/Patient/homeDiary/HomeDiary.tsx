@@ -3,6 +3,7 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Image,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
 
 export default function HomeDiary() {
   const router = useRouter();
@@ -41,6 +43,28 @@ export default function HomeDiary() {
     }
   };
 
+  const deleteEntry = async (entryId: string) => {
+    try {
+      await axios.delete(`http://localhost:3000/diary/delete/${entryId}`, {
+        data: { user_id: userId },
+      });
+      Alert.alert("Sucesso", "Nota deletada!");
+      if (userId) fetchEntries(userId);
+    } catch (err) {
+      console.error("Erro ao deletar entrada:", err);
+      Alert.alert("Erro", "Não foi possível deletar a nota.");
+    }
+  };
+
+  const renderRightActions = (entryId: string) => (
+    <TouchableOpacity onPress={() => deleteEntry(entryId)} style={styles.deleteButton}>
+      <Image
+        source={require("../../../assets/icons/delete.png")}
+        style={styles.deleteIcon}
+      />
+    </TouchableOpacity>
+  );
+
   const toggleMenu = () => {
     const novoEstado = !menuVisible;
     setMenuVisible(novoEstado);
@@ -62,100 +86,108 @@ export default function HomeDiary() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-<View style={styles.header}>
-  <Text style={styles.headerTitle}>Diário emocional</Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Diário emocional</Text>
+          <TouchableOpacity onPress={toggleMenu}>
+            <Image
+              source={require("../../../assets/icons/menu.png")}
+              style={styles.menuIcon}
+            />
+          </TouchableOpacity>
+        </View>
 
-  <TouchableOpacity onPress={toggleMenu}>
-    <Image
-      source={require("../../../assets/icons/menu.png")}
-      style={styles.menuIcon}
-    />
-  </TouchableOpacity>
-</View>
+        {/* Conteúdo principal */}
+        <ScrollView style={styles.content}>
+          {entries.length === 0 ? (
+            <Text style={{ textAlign: "center", marginTop: 20 }}>
+              Nenhuma entrada ainda
+            </Text>
+          ) : (
+            entries.map((entry) => {
+              const lines = entry.content.split("\n");
+              const title = lines[0] || "Sem título";
+              const date = entry.created_at
+                ? new Date(entry.created_at).toLocaleDateString("pt-BR")
+                : "";
 
-{/* Conteúdo principal */}
-<ScrollView style={styles.content}>
-  {entries.length === 0 ? (
-    <Text style={{ textAlign: "center", marginTop: 20 }}>
-      Nenhuma entrada ainda
-    </Text>
-  ) : (
-    entries.map((entry) => {
-      const lines = entry.content.split("\n");
-      const title = lines[0] || "Sem título";
-      const date = entry.created_at
-        ? new Date(entry.created_at).toLocaleDateString("pt-BR")
-        : "";
-
-      return (
-        <TouchableOpacity
-          key={entry.id}
-          onPress={() =>
-            router.push({ pathname: "../newNote/NewNote", params: { id: entry.id } })
-          }
-        >
-          <View style={styles.entryCard}>
-            <Text style={styles.entryTitle}>{title}</Text>
-            <Text style={styles.entryDate}>{date}</Text>
-          </View>
-        </TouchableOpacity>
-      );
-    })
-  )}
-</ScrollView>
-
-      {/* Retângulo azul flutuante inferior */}
-      <View style={styles.floatingBar}>
-        <TouchableOpacity onPress={() => router.push("../newNote/NewNote")}>
-          <Image
-            source={require("../../../assets/icons/more.png")}
-            style={styles.moreIcon}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.push("../home/Home")}>
-          <Image
-            source={require("../../../assets/icons/homeImage.png")}
-            style={styles.homeIcon}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => userId && fetchEntries(userId)}>
-          <Image
-            source={require("../../../assets/icons/menudiario.png")}
-            style={styles.rectIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Menu lateral */}
-      {menuVisible && (
-        <TouchableWithoutFeedback onPress={toggleMenu}>
-          <View style={styles.overlay}>
-            <Animated.View style={[styles.sideMenu, { left: slideAnim }]}>
-              <View>
-                <TouchableOpacity onPress={toggleMenu}>
-                  <Text style={styles.closeButton}>✖</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.menuHeading}>Menu</Text>
-                <TouchableOpacity
-                  onPress={() => router.push("../profile/Profile")}
+              return (
+                <Swipeable
+                  key={entry.id}
+                  renderRightActions={() => renderRightActions(entry.id)}
                 >
-                  <Text style={styles.menuOption}>Seu Perfil</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "../newNote/NewNote",
+                        params: { id: entry.id },
+                      })
+                    }
+                  >
+                    <View style={styles.entryCard}>
+                      <Text style={styles.entryTitle}>{title}</Text>
+                      <Text style={styles.entryDate}>{date}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Swipeable>
+              );
+            })
+          )}
+        </ScrollView>
 
-                <TouchableOpacity onPress={handleLogout}>
-                  <Text style={styles.logout}>Logout</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        </TouchableWithoutFeedback>
-      )}
-    </View>
+        {/* Retângulo azul flutuante inferior */}
+        <View style={styles.floatingBar}>
+          <TouchableOpacity onPress={() => router.push("../newNote/NewNote")}>
+            <Image
+              source={require("../../../assets/icons/more.png")}
+              style={styles.moreIcon}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push("../home/Home")}>
+            <Image
+              source={require("../../../assets/icons/homeImage.png")}
+              style={styles.homeIcon}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => userId && fetchEntries(userId)}>
+            <Image
+              source={require("../../../assets/icons/menudiario.png")}
+              style={styles.rectIcon}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Menu lateral */}
+        {menuVisible && (
+          <TouchableWithoutFeedback onPress={toggleMenu}>
+            <View style={styles.overlay}>
+              <Animated.View style={[styles.sideMenu, { left: slideAnim }]}>
+                <View>
+                  <TouchableOpacity onPress={toggleMenu}>
+                    <Text style={styles.closeButton}>✖</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.menuHeading}>Menu</Text>
+                  <TouchableOpacity
+                    onPress={() => router.push("../profile/Profile")}
+                  >
+                    <Text style={styles.menuOption}>Seu Perfil</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={handleLogout}>
+                    <Text style={styles.logout}>Logout</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
+          </TouchableWithoutFeedback>
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -169,9 +201,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
   },
-  backIcon: { width: 30, height: 20 },
   menuIcon: { width: 28, height: 28 },
-
   headerTitle: {
     position: "absolute",
     left: 0,
@@ -191,15 +221,19 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: "#000A74",
   },
-  entryTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
-    color: "#000",
+  entryTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 4, color: "#000" },
+  entryDate: { fontSize: 12, color: "#777" },
+
+  deleteButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 40, // espaço lateral suficiente para tocar
   },
-  entryDate: {
-    fontSize: 12,
-    color: "#777",
+  deleteIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: "contain",
+    top: -5,
   },
 
   overlay: {
