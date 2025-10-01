@@ -3,14 +3,14 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Animated,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 export default function HomeDiary() {
@@ -64,38 +64,47 @@ export default function HomeDiary() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("../home/Home")}>
-          <Image
-            source={require("../../../assets/icons/back.png")}
-            style={styles.backIcon}
-          />
+<View style={styles.header}>
+  <Text style={styles.headerTitle}>Diário emocional</Text>
+
+  <TouchableOpacity onPress={toggleMenu}>
+    <Image
+      source={require("../../../assets/icons/menu.png")}
+      style={styles.menuIcon}
+    />
+  </TouchableOpacity>
+</View>
+
+{/* Conteúdo principal */}
+<ScrollView style={styles.content}>
+  {entries.length === 0 ? (
+    <Text style={{ textAlign: "center", marginTop: 20 }}>
+      Nenhuma entrada ainda
+    </Text>
+  ) : (
+    entries.map((entry) => {
+      const lines = entry.content.split("\n");
+      const title = lines[0] || "Sem título";
+      const date = entry.created_at
+        ? new Date(entry.created_at).toLocaleDateString("pt-BR")
+        : "";
+
+      return (
+        <TouchableOpacity
+          key={entry.id}
+          onPress={() =>
+            router.push({ pathname: "../newNote/NewNote", params: { id: entry.id } })
+          }
+        >
+          <View style={styles.entryCard}>
+            <Text style={styles.entryTitle}>{title}</Text>
+            <Text style={styles.entryDate}>{date}</Text>
+          </View>
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Diário emocional</Text>
-
-        <TouchableOpacity onPress={toggleMenu}>
-          <Image
-            source={require("../../../assets/icons/menu.png")}
-            style={styles.menuIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Conteúdo principal */}
-      <ScrollView style={styles.content}>
-        {entries.length === 0 ? (
-          <Text style={{ textAlign: "center", marginTop: 20 }}>
-            Nenhuma entrada ainda
-          </Text>
-        ) : (
-          entries.map((entry) => (
-            <View key={entry.id} style={styles.entryCard}>
-              <Text>{entry.content}</Text>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      );
+    })
+  )}
+</ScrollView>
 
       {/* Retângulo azul flutuante inferior */}
       <View style={styles.floatingBar}>
@@ -113,7 +122,7 @@ export default function HomeDiary() {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => fetchEntries(userId!)}>
+        <TouchableOpacity onPress={() => userId && fetchEntries(userId)}>
           <Image
             source={require("../../../assets/icons/menudiario.png")}
             style={styles.rectIcon}
@@ -175,10 +184,22 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 20 },
 
   entryCard: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#f9f9f9",
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#000A74",
+  },
+  entryTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+    color: "#000",
+  },
+  entryDate: {
+    fontSize: 12,
+    color: "#777",
   },
 
   overlay: {
